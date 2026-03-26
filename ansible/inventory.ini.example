@@ -1,0 +1,9 @@
+# OCI Free Tier Servers Inventory
+# Usage: ansible-playbook -i inventory.ini deploy.yml
+
+[oci_free_servers]
+# Replace with your server IP/hostname
+oci-server ansible_host=YOUR_SERVER_IP ansible_user=root
+
+# Or use SSH alias
+# oci-server ansible_host=your-server.domain.com ansible_user=ubuntu

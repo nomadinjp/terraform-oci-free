@@ -1,0 +1,35 @@
+---
+# Reset OCI Free Tier - remove success flag to restart auto-renewal
+# Run this when the instance is lost and you want to start trying again
+
+- name: Reset OCI Free Tier Auto-Renewal
+  hosts: oci_free_servers
+  become: true
+  vars:
+    work_dir: /opt/oci-free
+
+  tasks:
+    - name: Check if success flag exists
+      ansible.builtin.stat:
+        path: "{{ work_dir }}/lock/.instance_created"
+      register: success_flag
+
+    - name: Remove success flag
+      ansible.builtin.file:
+        path: "{{ work_dir }}/lock/.instance_created"
+        state: absent
+      when: success_flag.stat.exists
+      register: flag_removed
+
+    - name: Display result
+      ansible.builtin.debug:
+        msg:
+          - "OCI Free Tier has been reset!"
+          - "Success flag removed: {{ 'Yes' if flag_removed.changed else 'No (was not set)' }}"
+          - "Cron jobs will now attempt to create a new instance."
+      when: success_flag.stat.exists or flag_removed is defined
+
+    - name: Notice - flag was not set
+      ansible.builtin.debug:
+        msg: "No success flag found. Instance creation is already active."
+      when: not success_flag.stat.exists

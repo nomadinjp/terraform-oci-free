@@ -1,0 +1,65 @@
+---
+# Prerequisites: Copy keys to target server
+# Run this BEFORE the main deploy.yml playbook
+
+- name: Setup OCI Keys on Target Server
+  hosts: oci_free_servers
+  become: true
+  vars:
+    local_oci_key: "{{ lookup('env', 'HOME') }}/.oci/oci.pem"
+    local_ssh_key: "{{ lookup('env', 'HOME') }}/.ssh/oci_free.pub"
+
+  tasks:
+    - name: Create .oci directory
+      ansible.builtin.file:
+        path: /root/.oci
+        state: directory
+        mode: '0700'
+        owner: root
+        group: root
+
+    - name: Create .ssh directory
+      ansible.builtin.file:
+        path: /root/.ssh
+        state: directory
+        mode: '0700'
+        owner: root
+        group: root
+
+    - name: Check if local OCI key exists
+      ansible.builtin.stat:
+        path: "{{ local_oci_key }}"
+      delegate_to: localhost
+      become: false
+      register: oci_key_stat
+      failed_when: not oci_key_stat.stat.exists
+
+    - name: Check if local SSH key exists
+      ansible.builtin.stat:
+        path: "{{ local_ssh_key }}"
+      delegate_to: localhost
+      become: false
+      register: ssh_key_stat
+      failed_when: not ssh_key_stat.stat.exists
+
+    - name: Copy OCI API key
+      ansible.builtin.copy:
+        src: "{{ local_oci_key }}"
+        dest: /root/.oci/oci.pem
+        mode: '0600'
+        owner: root
+        group: root
+
+    - name: Copy SSH public key
+      ansible.builtin.copy:
+        src: "{{ local_ssh_key }}"
+        dest: /root/.ssh/oci_free.pub
+        mode: '0644'
+        owner: root
+        group: root
+
+    - name: Verify keys are in place
+      ansible.builtin.debug:
+        msg:
+          - "OCI Key: /root/.oci/oci.pem"
+          - "SSH Key: /root/.ssh/oci_free.pub"

@@ -1,0 +1,47 @@
+---
+# Remove OCI Free Tier Auto-Renewal deployment
+# This will remove all cron jobs, files, and directories
+
+- name: Cleanup OCI Free Tier Deployment
+  hosts: oci_free_servers
+  become: true
+  vars:
+    work_dir: /opt/oci-free
+
+  tasks:
+    - name: Remove cron jobs
+      ansible.builtin.cron:
+        name: "{{ item }}"
+        state: absent
+        user: root
+        cron_file: oci-free
+      loop:
+        - "OCI Free Tier - Daytime"
+        - "OCI Free Tier - Nighttime (22-23)"
+        - "OCI Free Tier - Nighttime (00-05)"
+
+    - name: Remove cron file
+      ansible.builtin.file:
+        path: /etc/cron.d/oci-free
+        state: absent
+
+    - name: Remove logrotate config
+      ansible.builtin.file:
+        path: /etc/logrotate.d/oci-free
+        state: absent
+
+    - name: Remove working directory
+      ansible.builtin.file:
+        path: "{{ work_dir }}"
+        state: absent
+
+    - name: Display cleanup result
+      ansible.builtin.debug:
+        msg:
+          - "OCI Free Tier deployment has been removed!"
+          - "Deleted:"
+          - "  - Cron jobs (/etc/cron.d/oci-free)"
+          - "  - Logrotate config"
+          - "  - Working directory ({{ work_dir }})"
+          - ""
+          - "Note: OCI keys in /root/.oci and /root/.ssh were preserved."

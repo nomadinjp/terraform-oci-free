@@ -31,3 +31,7 @@ override.tf.json
 .terraform.lock.hcl
 *.tfvars
 state.config
+
+# Ansible sensitive files
+ansible/inventory.ini
+ansible/vars/secrets.yml

@@ -1,0 +1,115 @@
+---
+- name: Deploy OCI Free Tier Auto-Renewal
+  hosts: oci_free_servers
+  become: true
+  vars:
+    work_dir: /opt/oci-free
+    docker_image: hashicorp/terraform:1.13
+
+  vars_files:
+    - vars/secrets.yml
+
+  tasks:
+    - name: Create working directory
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+        owner: root
+        group: root
+      loop:
+        - "{{ work_dir }}"
+        - "{{ work_dir }}/terraform"
+        - "{{ work_dir }}/logs"
+        - "{{ work_dir }}/lock"
+
+    - name: Copy Terraform files
+      ansible.builtin.copy:
+        src: "{{ item }}"
+        dest: "{{ work_dir }}/terraform/"
+        mode: '0644'
+      loop:
+        - ../main.tf
+        - ../variables.tf
+        - ../data.tf
+        - ../outputs.tf
+        - ../state.config
+
+    - name: Create terraform.tfvars from secrets
+      ansible.builtin.template:
+        src: terraform.tfvars.j2
+        dest: "{{ work_dir }}/terraform/terraform.tfvars"
+        mode: '0600'
+        owner: root
+        group: root
+
+    - name: Deploy main run script
+      ansible.builtin.template:
+        src: run.sh.j2
+        dest: "{{ work_dir }}/run.sh"
+        mode: '0755'
+        owner: root
+        group: root
+
+    - name: Pull Terraform Docker image
+      ansible.builtin.command:
+        cmd: docker pull {{ docker_image }}
+      register: docker_pull
+      changed_when: true
+
+    - name: Create logrotate config
+      ansible.builtin.copy:
+        content: |
+          {{ work_dir }}/logs/*.log {
+              daily
+              rotate 7
+              compress
+              delaycompress
+              missingok
+              notifempty
+              create 0644 root root
+          }
+        dest: /etc/logrotate.d/oci-free
+        mode: '0644'
+
+    - name: Setup cron job - Daytime (06:00-22:00, every 2 minutes)
+      ansible.builtin.cron:
+        name: "OCI Free Tier - Daytime"
+        minute: "*/2"
+        hour: "6-21"
+        job: "{{ work_dir }}/run.sh >> {{ work_dir }}/logs/cron.log 2>&1"
+        user: root
+        cron_file: oci-free
+
+    - name: Setup cron job - Nighttime (22:00-06:00, every 1 minute)
+      ansible.builtin.cron:
+        name: "OCI Free Tier - Nighttime (22-23)"
+        minute: "*"
+        hour: "22,23"
+        job: "{{ work_dir }}/run.sh >> {{ work_dir }}/logs/cron.log 2>&1"
+        user: root
+        cron_file: oci-free
+
+    - name: Setup cron job - Nighttime (00:00-05:59)
+      ansible.builtin.cron:
+        name: "OCI Free Tier - Nighttime (00-05)"
+        minute: "*"
+        hour: "0-5"
+        job: "{{ work_dir }}/run.sh >> {{ work_dir }}/logs/cron.log 2>&1"
+        user: root
+        cron_file: oci-free
+
+    - name: Ensure server timezone is set to Asia/Tokyo
+      ansible.builtin.timezone:
+        name: Asia/Tokyo
+
+    - name: Display deployment summary
+      ansible.builtin.debug:
+        msg:
+          - "OCI Free Tier Auto-Renewal deployed successfully!"
+          - "Work directory: {{ work_dir }}"
+          - "Logs: {{ work_dir }}/logs/"
+          - "Cron schedule:"
+          - "  - 06:00-21:59: Every 2 minutes"
+          - "  - 22:00-05:59: Every 1 minute"
+          - "Timezone: Asia/Tokyo"

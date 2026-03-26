@@ -1,0 +1,43 @@
+---
+# Optional: Install Docker on target server
+# Only run this if Docker is not already installed
+
+- name: Install Docker
+  hosts: oci_free_servers
+  become: true
+
+  tasks:
+    - name: Install system dependencies (Debian/Ubuntu)
+      ansible.builtin.apt:
+        name:
+          - docker.io
+          - docker-compose
+          - curl
+        state: present
+        update_cache: yes
+      when: ansible_os_family == "Debian"
+
+    - name: Install system dependencies (RedHat/CentOS/Fedora)
+      ansible.builtin.dnf:
+        name:
+          - docker
+          - docker-compose
+          - curl
+        state: present
+      when: ansible_os_family == "RedHat"
+
+    - name: Start and enable Docker service
+      ansible.builtin.service:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Verify Docker installation
+      ansible.builtin.command:
+        cmd: docker --version
+      register: docker_version
+      changed_when: false
+
+    - name: Display Docker version
+      ansible.builtin.debug:
+        msg: "Docker installed: {{ docker_version.stdout }}"
