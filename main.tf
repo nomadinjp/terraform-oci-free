@@ -52,7 +52,7 @@ resource "oci_core_subnet" "free_subnet" {
   ipv6cidr_block    = cidrsubnet(oci_core_vcn.free_vcn.ipv6cidr_blocks[0], 8, 0) # Expand /56 to /64
   display_name      = "freeSubnet"
   dns_label         = "freesubnet"
-  security_list_ids = [oci_core_security_list.free_security_list.id]
+  security_list_ids = [oci_core_vcn.free_vcn.default_security_list_id, oci_core_security_list.free_security_list.id]
   compartment_id    = oci_identity_compartment.free_compartment.id
   vcn_id            = oci_core_vcn.free_vcn.id
   route_table_id    = oci_core_route_table.free_route_table.id
@@ -94,33 +94,21 @@ resource "oci_core_security_list" "free_security_list" {
   vcn_id         = oci_core_vcn.free_vcn.id
   display_name   = "freeSecurityList"
 
-  egress_security_rules {
-    protocol    = "all"
-    destination = "0.0.0.0/0"
-  }
-
-  egress_security_rules {
-    protocol    = "all"
-    destination = "::/0"
-  }
-
   ingress_security_rules {
-    protocol = "6"
-    source   = "0.0.0.0/0"
+    protocol    = "1"
+    source      = "0.0.0.0/0"
 
-    tcp_options {
-      max = "22"
-      min = "22"
+    icmp_options {
+      type = 8
     }
   }
 
   ingress_security_rules {
-    protocol = "6"
+    protocol = "58"
     source   = "::/0"
 
-    tcp_options {
-      max = "22"
-      min = "22"
+    icmp_options {
+      type = "128"
     }
   }
 }
