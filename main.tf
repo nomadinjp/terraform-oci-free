@@ -95,12 +95,12 @@ resource "oci_core_security_list" "free_security_list" {
   display_name   = "freeSecurityList"
 
   egress_security_rules {
-    protocol    = "6"
+    protocol    = "all"
     destination = "0.0.0.0/0"
   }
 
   egress_security_rules {
-    protocol    = "6"
+    protocol    = "all"
     destination = "::/0"
   }
 
